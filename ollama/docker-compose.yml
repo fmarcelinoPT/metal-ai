@@ -1,0 +1,18 @@
+volumes:
+  ollama_data:
+    name: ollama_data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/ollama_data
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    runtime: nvidia
+    ports:
+      - 11434:11434
+    volumes:
+      - ollama_data:/root/.ollama
