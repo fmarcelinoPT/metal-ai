@@ -14,5 +14,12 @@ services:
     runtime: nvidia
     ports:
       - 11434:11434
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
     volumes:
       - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]

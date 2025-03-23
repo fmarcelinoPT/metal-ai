@@ -36,7 +36,25 @@ To run this server locally or deploy it on your preferred cloud service, follow 
    - [GPU Passthrough to a Virtual Machine on Proxmox Server (Ubuntu VM)](https://medium.com/@cactusmccoy/gpu-access-from-a-virtual-machine-on-proxmox-server-ubuntu-vm-903bb9783cb3)
 1. Create VM (I used Ubuntu flavour)
 1. Install graphics drivers
+   1. `sudo apt install ubuntu-drivers-common -y`
+   1. <https://documentation.ubuntu.com/server/how-to/graphics/install-nvidia-drivers/index.html>
+   1. `sudo ubuntu-drivers list --gpgpu`
+   1. `sudo ubuntu-drivers install --gpgpu nvidia:570-server`
+   1. `sudo apt install nvidia-utils-570-server`
+   1. `sudo apt install nvidia-fabricmanager-570 libnvidia-nscq-570`
+1. Install [CUDA Drivers](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/index.html#ubuntu-installation)
+   1. `wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb`
+   1. `sudo dpkg -i cuda-keyring_1.1-1_all.deb`
+   1. `sudo apt update`
+   1. `sudo apt install cuda-drivers -y`
+   1. `sudo reboot -h 0`
+1. Test GPU connection: `watch -n0.1 nvidia-smi` | `watch -n1 nvidia-smi`
 1. Install [NVidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+   1. On error `Failed to initialize NVML: Unknown Error`
+      1. `sudo nano /etc/nvidia-container-runtime/config.toml`
+      1. Set the parameter: `no-cgroups = false`
+      1. `sudo systemctl restart docker`
+      1. Run test: `sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi`
 1. Install [Docker](https://docs.docker.com/engine/install/ubuntu/)
    - [Linux post-installation steps for Docker Engine](https://docs.docker.com/engine/install/linux-postinstall/)
 1. :bulb: Create new HDD on the VM (to hold the models; useful to ease the backup process) and map it to `/data`
@@ -44,20 +62,25 @@ To run this server locally or deploy it on your preferred cloud service, follow 
 ### Deploy containers
 
 1. Clone the repository to your local machine.
-1. Install Portainer: `sh portainer/execute-update.sh`
-1. Install OpenWebUI: `sh open-webui/execute-update.sh`
-1. Install Ollama: `sh ollama/execute-update.sh`
+1. Install Portainer: `sh ./portainer/execute-update.sh`
+1. Install OpenWebUI: `sh ./open-webui/execute-update.sh`
+1. Install Ollama: `sh ./ollama/execute-update.sh`
 1. Install models in Ollama:
 
    ```bash
    docker exec -it ollama bash
 
-   ollama pull llama3:8b
+   # Best Performance (Stable & Fast)
    ollama pull mistral:7b
-   ollama pull gemma2:9b
-   ollama pull deepseek-coder-v2:16b
+   ollama pull llama3.1:8b
+   ollama pull phi:2.7b
+   ollama pull deepseek-r1:8b
+   # Personal Management
+   ollama pull granite3.2:8b
+   # Coding
+   ollama pull granite-code:8b
    ollama pull codegemma:7b
-   ollama pull granite3.1-dense:8b
+   ollama pull starcoder2:7B
    ```
 
 1. Navigate to the Open WebUI interface in your browser at `http://[server]:8080`
