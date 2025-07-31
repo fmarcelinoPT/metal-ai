@@ -86,6 +86,14 @@ To run this server locally or deploy it on your preferred cloud service, follow 
 1. Navigate to the Open WebUI interface in your browser at `http://[server]:8080`
    - [Open WebUI Getting Started](https://docs.openwebui.com/getting-started/quick-start)
 
+### Update all models
+
+```bash
+docker exec -it ollama /bin/bash
+ollama list | awk -F: 'NR>1 && !/reviewer/ {system("ollama pull "$1)}'
+ollama list | awk 'NR>1 {print $1}' | xargs -I {} sh -c 'echo "Updating model: {}"; ollama pull {}; echo "---"' && echo "All models updated."
+```
+
 ## Future Enhancements
 
 Planned enhancements include:

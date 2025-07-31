@@ -1,0 +1,1 @@
+ollama create assistente-mixtral -f Modelfile-mixtral
