@@ -1,0 +1,1 @@
+ollama create dis-assistant-granite -f Modelfile-dis-assistant

@@ -86,6 +86,127 @@ To run this server locally or deploy it on your preferred cloud service, follow 
 1. Navigate to the Open WebUI interface in your browser at `http://[server]:8080`
    - [Open WebUI Getting Started](https://docs.openwebui.com/getting-started/quick-start)
 
+### Update all models
+
+```bash
+docker exec -it ollama /bin/bash
+ollama list | awk -F: 'NR>1 && !/reviewer/ {system("ollama pull "$1)}'
+ollama list | awk 'NR>1 {print $1}' | xargs -I {} sh -c 'echo "Updating model: {}"; ollama pull {}; echo "---"' && echo "All models updated."
+```
+
+## Models decision
+
+### `gpt-oss:20b`
+
+- **Goal**: Assistente Pessoal (Para o dia a dia)
+- **Resources**: <https://huggingface.co/openai/gpt-oss-20b>
+
+#### Highlights
+
+- Permissive Apache 2.0 license: Build freely without copyleft restrictions or patent risk—ideal for experimentation, customization, and commercial deployment.
+- Configurable reasoning effort: Easily adjust the reasoning effort (low, medium, high) based on your specific use case and latency needs.
+- Full chain-of-thought: Gain complete access to the model’s reasoning process, facilitating easier debugging and increased trust in outputs. It’s not intended to be shown to end users.
+- Fine-tunable: Fully customize models to your specific use case through parameter fine-tuning.
+- Agentic capabilities: Use the models’ native capabilities for function calling, web browsing, Python code execution, and Structured Outputs.
+- MXFP4 quantization: The models were post-trained with MXFP4 quantization of the MoE weights, making gpt-oss-120b run on a single 80GB GPU (like NVIDIA H100 or AMD MI300X) and the gpt-oss-20b model run within 16GB of memory. All evals were performed with the same MXFP4 quantization.
+
+#### Install
+
+```bash
+# ollama pull hf.co/openai/gpt-oss-20b
+ollama pull gpt-oss:20b
+```
+
+### `mistralai/Mixtral-8x22B-Instruct-v0.1`
+
+- **Goal**: Brainstorming (Ideias e Criatividade)
+- **Resources**: <https://huggingface.co/mistralai/Mixtral-8x22B-Instruct-v0.1>
+
+#### Uso Pretendido (Intended Use)
+
+Este modelo foi criado para ser o "motor" de aplicações que exigem alto desempenho e precisão, com especial foco em:
+
+Chatbots e Assistentes Virtuais: O seu design e o fine-tuning "instruct" tornam-no ideal para conversas complexas, onde é necessário manter o contexto, responder a perguntas detalhadas e seguir a lógica do utilizador.
+
+Geração de Conteúdo: É excelente a gerar texto de alta qualidade, desde resumos técnicos e documentação até conteúdo criativo.
+
+Aplicações de Raciocínio Lógico: Pode ser usado em cenários que exigem pensamento estruturado, como análise de dados, planeamento de projetos ou até mesmo resolução de problemas de matemática e de código.
+
+Modernização de Tecnologia: A sua capacidade de "function calling" permite-lhe integrar-se com APIs externas e bases de dados, tornando-o um pilar para a criação de soluções que automatizam fluxos de trabalho ou interagem com sistemas existentes.
+
+Em resumo, é um modelo para developers, arquitetos e engenheiros que pretendem criar soluções robustas e inteligentes, seja para uso interno, seja para produtos comerciais.
+
+#### Capacidades-Chave (Capabilities)
+
+As suas capacidades destacam-se em várias frentes, principalmente devido à sua arquitetura Sparse Mixture-of-Experts (SMoE) e ao seu tamanho:
+
+Raciocínio e Conhecimento Avançado: Embora seja um modelo de 8 experts de 22 mil milhões de parâmetros, usa apenas 39 mil milhões de parâmetros ativos em qualquer momento. Isto permite-lhe ter a capacidade de um modelo muito maior, mas com uma eficiência de processamento superior. É especialmente forte em benchmarks de raciocínio, conhecimento geral, matemática e programação.
+
+Janela de Contexto (Context Window) de 64K Tokens: Esta é uma das suas maiores vantagens. Uma janela de contexto de 64.000 tokens significa que o modelo consegue "lembrar" e processar uma quantidade massiva de texto (o equivalente a dezenas de páginas de um documento ou código). Isto é crucial para tarefas como a sumarização de documentos extensos, a análise de relatórios completos ou a análise de grandes bases de código, algo que te interessa diretamente para resumos executivos.
+
+Competência Multilingue: É fluente em várias línguas, incluindo Português, Inglês, Francês, Italiano, Alemão e Espanhol. Isto torna-o altamente relevante para as tuas operações em Portugal, Angola e Moçambique.
+
+Capacidade Nativas de Function Calling: Esta é uma funcionalidade que o distingue e que permite ao modelo chamar ferramentas ou APIs externas para obter informações ou executar tarefas, indo além da simples geração de texto.
+
+### Install
+
+```bash
+# ollama pull hf.co/mistralai/Mixtral-8x22B-Instruct-v0.1
+# ollama pull hf.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506
+# ollama pull mistral-small:22b-instruct-2409-q4_K_M
+ollama pull hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q8_0-GGUF
+ollama pull hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q5_K_M-GGUF
+```
+
+### `ibm-granite/granite-3.3-8b-instruct`
+
+- **Goal**: Delegação de Tarefas (Clareza e Estrutura)
+- **Resources**: <https://huggingface.co/ibm-granite/granite-3.3-8b-instruct>
+
+#### Intended Use
+
+This model is designed to handle general instruction-following tasks and can be integrated into AI assistants across various domains, including business applications.
+
+#### Capabilities
+
+- Thinking
+- Summarization
+- Text classification
+- Text extraction
+- Question-answering
+- Retrieval Augmented Generation (RAG)
+- Code related tasks
+- Function-calling tasks
+- Multilingual dialog use cases
+- Long-context tasks including long document/meeting summarization, long document QA, etc.
+
+#### Install
+
+```bash
+ollama pull hf.co/ibm-granite/granite-3.3-8b-instruct-GGUF
+```
+
+## Helpers
+
+### Unload model from memory
+
+```bash
+curl http://metalai.onemarc.io:11434/api/generate -d '{"model": "gemma3:12b", "keep_alive": 0}'
+curl http://metalai.onemarc.io:11434/api/generate -d '{"model": "hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q8_0-GGUF", "keep_alive": 0}'
+```
+
+### Pull from hugging faces
+
+Resources: <https://huggingface.co/docs/hub/en/ollama>
+
+Example #1
+
+```bash
+ollama pull hf.co/unsloth/Llama-3.3-70B-Instruct-GGUF
+ollama pull hf.co/microsoft/phi-4
+ollama pull hf.co/microsoft/Phi-4-reasoning
+```
+
 ## Future Enhancements
 
 Planned enhancements include:
