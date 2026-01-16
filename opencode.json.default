@@ -42,6 +42,7 @@
       "mode": "primary",
       "model": "ollama/dis-assistant-magistral",
       "temperature": 0.3,
+      "prompt": "{file:.opencode/agent/magistral.md}",
       "tools": {
         "read": true,
         "glob": true,
