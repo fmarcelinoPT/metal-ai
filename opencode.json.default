@@ -41,8 +41,7 @@
       "description": "Executive assistant for reasoning, analysis, writing emails, and documentation",
       "mode": "primary",
       "model": "ollama/dis-assistant-magistral",
-      "temperature": 0.3,
-      "prompt": "{file:.opencode/agent/magistral.md}",
+      "prompt": "{file:./agent/magistral.md}",
       "tools": {
         "read": true,
         "glob": true,
@@ -56,7 +55,6 @@
       "description": "Agentic coding assistant for development tasks",
       "mode": "subagent",
       "model": "ollama/dis-assistant-coder",
-      "temperature": 0.2,
       "tools": {
         "read": true,
         "glob": true,
@@ -70,7 +68,6 @@
       "description": "Quick assistant for document review and analysis",
       "mode": "subagent",
       "model": "ollama/dis-assistant-granite",
-      "temperature": 0.5,
       "tools": {
         "read": true,
         "glob": true,

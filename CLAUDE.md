@@ -64,7 +64,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<model-name>", "keep_ali
 - **open-webui/** - Web interface for interacting with models
 - **portainer/** - Container management dashboard (Port 9000)
 
-## Custom Models (modelos/)
+## Custom Models (models/)
 
 Custom model definitions using Ollama Modelfiles with embedded system prompts:
 
