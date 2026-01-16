@@ -1,217 +1,811 @@
-# AI Server with Ollama and OpenWebUI
+# Metal-AI: Self-Hosted AI Server
+
+A Docker-based AI server infrastructure built with Ollama and OpenWebUI, leveraging dual RTX 3090 GPUs for high-performance LLM inference.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Hardware Requirements](#hardware-requirements)
+- [Prerequisites](#prerequisites)
+  - [1. Proxmox GPU Passthrough](#1-proxmox-gpu-passthrough)
+  - [2. VM Setup](#2-vm-setup)
+  - [3. NVIDIA Drivers](#3-nvidia-drivers)
+  - [4. CUDA Toolkit](#4-cuda-toolkit)
+  - [5. NVIDIA Container Toolkit](#5-nvidia-container-toolkit)
+  - [6. Docker Engine](#6-docker-engine)
+  - [7. Storage Setup](#7-storage-setup)
+- [Deployment](#deployment)
+  - [Clone Repository](#clone-repository)
+  - [Deploy Services](#deploy-services)
+  - [Install Models](#install-models)
+- [Configuration](#configuration)
+  - [Ollama Settings](#ollama-settings)
+  - [OpenWebUI Settings](#openwebui-settings)
+- [Custom Models](#custom-models)
+  - [dis-assistant-coder](#dis-assistant-coder)
+  - [dis-assistant-granite](#dis-assistant-granite)
+  - [dis-assistant-magistral](#dis-assistant-magistral)
+  - [Creating Custom Models](#creating-custom-models)
+- [Model Management](#model-management)
+  - [Installing Models](#installing-models)
+  - [Updating Models](#updating-models)
+  - [Unloading Models from Memory](#unloading-models-from-memory)
+  - [Pulling from Hugging Face](#pulling-from-hugging-face)
+- [Services Reference](#services-reference)
+- [OpenCode CLI](#opencode-cli)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Agents](#agents)
+  - [Agent Prompts](#agent-prompts)
+  - [Usage](#usage)
+  - [Server Configuration](#server-configuration)
+- [Cheat Sheet](#cheat-sheet)
+- [Troubleshooting](#troubleshooting)
+
+---
 
 ## Overview
 
-This repository contains a comprehensive AI server built using Ollama for backend processing and OpenWebUI for frontend interaction. The project aims to leverage state-of-the-art machine learning models to provide advanced AI capabilities, including natural language understanding and generation, image classification, and more.
+Metal-AI provides a self-hosted platform for deploying and managing multiple Large Language Models (LLMs) with GPU acceleration. The stack consists of:
 
-## Project Goal
+- **Ollama**: Backend inference engine with multi-GPU support
+- **OpenWebUI**: Feature-rich web interface for interacting with models
+- **Portainer**: Container management dashboard
 
-The primary goal of this project is to create a versatile and scalable AI server that can interact with users through an intuitive web interface. By integrating various pre-trained models, including `LLama3:8b`, `Mistral:7b`, `Gemma2:9b`, `DeepSeek-Coder-V2:16b`, `CodeGemma:7` and `Granite3.1-Dense:8b`, the server aims to offer a wide range of AI services tailored for diverse applications including research, education, and business use cases.
+## Architecture
 
-## Models Included
+```plain
+┌─────────────────────────────────────────────────────────────┐
+│                    OpenWebUI (Port 8080)                    │
+│                    React-based Frontend                     │
+│        File uploads: txt, md, pdf, csv, json, xlsx, docx    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ REST API (localhost:11434)
+┌──────────────────────────▼──────────────────────────────────┐
+│                    Ollama (Port 11434)                      │
+│              GPU-Accelerated Inference Engine               │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Configuration:                                      │   │
+│  │  • 4 parallel requests (OLLAMA_NUM_PARALLEL)        │   │
+│  │  • 2 models loaded in VRAM (OLLAMA_MAX_LOADED)      │   │
+│  │  • Flash Attention enabled                          │   │
+│  │  • 12h keep-alive timeout                           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌───────────────┐              ┌───────────────┐          │
+│  │   RTX 3090    │              │   RTX 3090    │          │
+│  │    (24GB)     │              │    (24GB)     │          │
+│  │   GPU 0       │              │   GPU 1       │          │
+│  └───────────────┘              └───────────────┘          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              │     Model Storage       │
+              │   /data/ollama_data     │
+              │   /data/ollama_models   │
+              └─────────────────────────┘
 
-- **LLama3:8b** - A powerful language model capable of handling complex natural language tasks.
-- **Mistral:7b** - Known for its versatility in various NLP tasks, it enhances the server's capability to understand and generate human-like text.
-- **Gemma2:9b** - Specialized in dense retrieval systems, ideal for enhancing the search efficiency within large datasets.
-- **DeepSeek-Coder-V2:16b** - Focused on code generation and understanding, this model is crucial for developers seeking AI support with high accuracy and speed.
-- **CodeGemma:7** - A lightweight yet powerful language model designed to handle Ruby and similar programming languages efficiently.
-- **Granite3.1-Dense:8b** - Optimized for dense vector computations, it improves the performance of similarity searches and data analytics within the server's scope.
-
-## Technologies Used
-
-- **Proxmox**: Proxmox VE is an open-source server virtualization platform to manage two virtualization technologies: Kernel-based Virtual Machine (KVM) for virtual machines and LXC for containers - with a single web-based interface.
-- **Docker**: For containerizing and deploying the application environment efficiently in various cloud providers.
-- **GitLab CI/CD**: Ensures seamless integration, testing, and deployment pipelines for the project through DevOps methodology.
-- **Ollama**: A backend framework that handles model inference requests from OpenWebUI.
-- **OpenWebUI**: An interactive web interface built on React which allows users to interact with AI models seamlessly.
-
-## Getting Started
-
-To run this server locally or deploy it on your preferred cloud service, follow these steps:
-
-### Prerequisites
-
-1. Ensure GPU passthrough on Proxmox:
-   - [Configure Proxmox GPU Passthrough (Step-by-Step Tutorial)](https://www.youtube.com/watch?v=IE0ew8WwxLM)
-   - [GPU Passthrough to a Virtual Machine on Proxmox Server (Ubuntu VM)](https://medium.com/@cactusmccoy/gpu-access-from-a-virtual-machine-on-proxmox-server-ubuntu-vm-903bb9783cb3)
-1. Create VM (I used Ubuntu flavour)
-1. Install graphics drivers
-   1. `sudo apt install ubuntu-drivers-common -y`
-   1. <https://documentation.ubuntu.com/server/how-to/graphics/install-nvidia-drivers/index.html>
-   1. `sudo ubuntu-drivers list --gpgpu`
-   1. `sudo ubuntu-drivers install --gpgpu nvidia:570-server`
-   1. `sudo apt install nvidia-utils-570-server`
-   1. `sudo apt install nvidia-fabricmanager-570 libnvidia-nscq-570`
-1. Install [CUDA Drivers](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/index.html#ubuntu-installation)
-   1. `wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb`
-   1. `sudo dpkg -i cuda-keyring_1.1-1_all.deb`
-   1. `sudo apt update`
-   1. `sudo apt install cuda-drivers -y`
-   1. `sudo reboot -h 0`
-1. Test GPU connection: `watch -n0.1 nvidia-smi` | `watch -n1 nvidia-smi`
-1. Install [NVidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-   1. On error `Failed to initialize NVML: Unknown Error`
-      1. `sudo nano /etc/nvidia-container-runtime/config.toml`
-      1. Set the parameter: `no-cgroups = false`
-      1. `sudo systemctl restart docker`
-      1. Run test: `sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi`
-1. Install [Docker](https://docs.docker.com/engine/install/ubuntu/)
-   - [Linux post-installation steps for Docker Engine](https://docs.docker.com/engine/install/linux-postinstall/)
-1. :bulb: Create new HDD on the VM (to hold the models; useful to ease the backup process) and map it to `/data`
-
-### Deploy containers
-
-1. Clone the repository to your local machine.
-1. Install Portainer: `sh ./portainer/execute-update.sh`
-1. Install OpenWebUI: `sh ./open-webui/execute-update.sh`
-1. Install Ollama: `sh ./ollama/execute-update.sh`
-1. Install models in Ollama:
-
-   ```bash
-   docker exec -it ollama bash
-
-   # Best Performance (Stable & Fast)
-   ollama pull mistral:7b
-   ollama pull llama3.1:8b
-   ollama pull phi:2.7b
-   ollama pull deepseek-r1:8b
-   # Personal Management
-   ollama pull granite3.2:8b
-   # Coding
-   ollama pull granite-code:8b
-   ollama pull codegemma:7b
-   ollama pull starcoder2:7B
-   ```
-
-1. Navigate to the Open WebUI interface in your browser at `http://[server]:8080`
-   - [Open WebUI Getting Started](https://docs.openwebui.com/getting-started/quick-start)
-
-### Update all models
-
-```bash
-docker exec -it ollama /bin/bash
-ollama list | awk -F: 'NR>1 && !/reviewer/ {system("ollama pull "$1)}'
-ollama list | awk 'NR>1 {print $1}' | xargs -I {} sh -c 'echo "Updating model: {}"; ollama pull {}; echo "---"' && echo "All models updated."
+┌─────────────────────────────────────────────────────────────┐
+│               Portainer (Ports 9000, 9443)                  │
+│               Container Management Dashboard                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Models decision
+## Hardware Requirements
 
-### `gpt-oss:20b`
+| Component | Minimum                   | Recommended                        |
+|-----------|---------------------------|------------------------------------|
+| GPU       | 1x NVIDIA GPU (8GB+ VRAM) | 2x RTX 3090 (48GB total VRAM)      |
+| RAM       | 32GB                      | 64GB+                              |
+| Storage   | 100GB SSD                 | 500GB+ NVMe (dedicated for models) |
+| CPU       | 8 cores                   | 16+ cores                          |
 
-- **Goal**: Assistente Pessoal (Para o dia a dia)
-- **Resources**: <https://huggingface.co/openai/gpt-oss-20b>
+## Prerequisites
 
-#### Highlights
+### 1. Proxmox GPU Passthrough
 
-- Permissive Apache 2.0 license: Build freely without copyleft restrictions or patent risk—ideal for experimentation, customization, and commercial deployment.
-- Configurable reasoning effort: Easily adjust the reasoning effort (low, medium, high) based on your specific use case and latency needs.
-- Full chain-of-thought: Gain complete access to the model’s reasoning process, facilitating easier debugging and increased trust in outputs. It’s not intended to be shown to end users.
-- Fine-tunable: Fully customize models to your specific use case through parameter fine-tuning.
-- Agentic capabilities: Use the models’ native capabilities for function calling, web browsing, Python code execution, and Structured Outputs.
-- MXFP4 quantization: The models were post-trained with MXFP4 quantization of the MoE weights, making gpt-oss-120b run on a single 80GB GPU (like NVIDIA H100 or AMD MI300X) and the gpt-oss-20b model run within 16GB of memory. All evals were performed with the same MXFP4 quantization.
+Configure GPU passthrough on your Proxmox host:
 
-#### Install
+**Resources:**
+
+- [GPU Passthrough Step-by-Step Tutorial (Video)](https://www.youtube.com/watch?v=IE0ew8WwxLM)
+- [GPU Access from VM on Proxmox (Ubuntu)](https://medium.com/@cactusmccoy/gpu-access-from-a-virtual-machine-on-proxmox-server-ubuntu-vm-903bb9783cb3)
+
+### 2. VM Setup
+
+Create a new VM in Proxmox:
+
+- **OS**: Ubuntu 22.04/24.04 LTS recommended
+- **RAM**: 32GB minimum
+- **Disk**: 50GB for OS, additional disk for models
+- **CPU**: Assign adequate cores (8+)
+- **PCI Passthrough**: Add GPU device(s)
+
+### 3. NVIDIA Drivers
+
+Install NVIDIA drivers on the VM:
 
 ```bash
-# ollama pull hf.co/openai/gpt-oss-20b
-ollama pull gpt-oss:20b
+# Install driver utilities
+sudo apt update
+sudo apt install ubuntu-drivers-common -y
+
+# List available GPU drivers
+sudo ubuntu-drivers list --gpgpu
+
+# Install NVIDIA server driver (adjust version as needed)
+sudo ubuntu-drivers install --gpgpu nvidia:570-server
+
+# Install additional utilities
+sudo apt install nvidia-utils-570-server
+sudo apt install nvidia-fabricmanager-570 libnvidia-nscq-570
+
+# Reboot to apply
+sudo reboot
 ```
 
-### `mistralai/Mixtral-8x22B-Instruct-v0.1`
+**Reference:** [Ubuntu NVIDIA Driver Installation Guide](https://documentation.ubuntu.com/server/how-to/graphics/install-nvidia-drivers/index.html)
 
-- **Goal**: Brainstorming (Ideias e Criatividade)
-- **Resources**: <https://huggingface.co/mistralai/Mixtral-8x22B-Instruct-v0.1>
+### 4. CUDA Toolkit
 
-#### Uso Pretendido (Intended Use)
-
-Este modelo foi criado para ser o "motor" de aplicações que exigem alto desempenho e precisão, com especial foco em:
-
-Chatbots e Assistentes Virtuais: O seu design e o fine-tuning "instruct" tornam-no ideal para conversas complexas, onde é necessário manter o contexto, responder a perguntas detalhadas e seguir a lógica do utilizador.
-
-Geração de Conteúdo: É excelente a gerar texto de alta qualidade, desde resumos técnicos e documentação até conteúdo criativo.
-
-Aplicações de Raciocínio Lógico: Pode ser usado em cenários que exigem pensamento estruturado, como análise de dados, planeamento de projetos ou até mesmo resolução de problemas de matemática e de código.
-
-Modernização de Tecnologia: A sua capacidade de "function calling" permite-lhe integrar-se com APIs externas e bases de dados, tornando-o um pilar para a criação de soluções que automatizam fluxos de trabalho ou interagem com sistemas existentes.
-
-Em resumo, é um modelo para developers, arquitetos e engenheiros que pretendem criar soluções robustas e inteligentes, seja para uso interno, seja para produtos comerciais.
-
-#### Capacidades-Chave (Capabilities)
-
-As suas capacidades destacam-se em várias frentes, principalmente devido à sua arquitetura Sparse Mixture-of-Experts (SMoE) e ao seu tamanho:
-
-Raciocínio e Conhecimento Avançado: Embora seja um modelo de 8 experts de 22 mil milhões de parâmetros, usa apenas 39 mil milhões de parâmetros ativos em qualquer momento. Isto permite-lhe ter a capacidade de um modelo muito maior, mas com uma eficiência de processamento superior. É especialmente forte em benchmarks de raciocínio, conhecimento geral, matemática e programação.
-
-Janela de Contexto (Context Window) de 64K Tokens: Esta é uma das suas maiores vantagens. Uma janela de contexto de 64.000 tokens significa que o modelo consegue "lembrar" e processar uma quantidade massiva de texto (o equivalente a dezenas de páginas de um documento ou código). Isto é crucial para tarefas como a sumarização de documentos extensos, a análise de relatórios completos ou a análise de grandes bases de código, algo que te interessa diretamente para resumos executivos.
-
-Competência Multilingue: É fluente em várias línguas, incluindo Português, Inglês, Francês, Italiano, Alemão e Espanhol. Isto torna-o altamente relevante para as tuas operações em Portugal, Angola e Moçambique.
-
-Capacidade Nativas de Function Calling: Esta é uma funcionalidade que o distingue e que permite ao modelo chamar ferramentas ou APIs externas para obter informações ou executar tarefas, indo além da simples geração de texto.
-
-### Install
+Install CUDA drivers:
 
 ```bash
-# ollama pull hf.co/mistralai/Mixtral-8x22B-Instruct-v0.1
-# ollama pull hf.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506
-# ollama pull mistral-small:22b-instruct-2409-q4_K_M
-ollama pull hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q8_0-GGUF
-ollama pull hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q5_K_M-GGUF
+# Add NVIDIA CUDA repository
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+
+# Install CUDA drivers
+sudo apt update
+sudo apt install cuda-drivers -y
+
+# Reboot
+sudo reboot
 ```
 
-### `ibm-granite/granite-3.3-8b-instruct`
-
-- **Goal**: Delegação de Tarefas (Clareza e Estrutura)
-- **Resources**: <https://huggingface.co/ibm-granite/granite-3.3-8b-instruct>
-
-#### Intended Use
-
-This model is designed to handle general instruction-following tasks and can be integrated into AI assistants across various domains, including business applications.
-
-#### Capabilities
-
-- Thinking
-- Summarization
-- Text classification
-- Text extraction
-- Question-answering
-- Retrieval Augmented Generation (RAG)
-- Code related tasks
-- Function-calling tasks
-- Multilingual dialog use cases
-- Long-context tasks including long document/meeting summarization, long document QA, etc.
-
-#### Install
+**Verify GPU access:**
 
 ```bash
-ollama pull hf.co/ibm-granite/granite-3.3-8b-instruct-GGUF
+nvidia-smi
+# Or watch continuously:
+watch -n1 nvidia-smi
 ```
 
-## Helpers
+**Reference:** [NVIDIA CUDA Driver Installation Guide](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/index.html#ubuntu-installation)
 
-### Unload model from memory
+### 5. NVIDIA Container Toolkit
+
+Install the container toolkit to enable GPU access in Docker:
 
 ```bash
-curl http://metalai.onemarc.io:11434/api/generate -d '{"model": "gemma3:12b", "keep_alive": 0}'
-curl http://metalai.onemarc.io:11434/api/generate -d '{"model": "hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q8_0-GGUF", "keep_alive": 0}'
+# Follow official installation guide
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 ```
 
-### Pull from hugging faces
-
-Resources: <https://huggingface.co/docs/hub/en/ollama>
-
-Example #1
+**Test GPU access in Docker:**
 
 ```bash
-ollama pull hf.co/unsloth/Llama-3.3-70B-Instruct-GGUF
+sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
+```
+
+**Troubleshooting NVML errors:**
+
+```bash
+# If you see "Failed to initialize NVML: Unknown Error"
+sudo nano /etc/nvidia-container-runtime/config.toml
+# Set: no-cgroups = false
+sudo systemctl restart docker
+```
+
+### 6. Docker Engine
+
+Install Docker:
+
+```bash
+# Follow official guide:
+# https://docs.docker.com/engine/install/ubuntu/
+```
+
+**Post-installation (run Docker without sudo):**
+
+```bash
+# https://docs.docker.com/engine/install/linux-postinstall/
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### 7. Storage Setup
+
+Create a dedicated storage location for models (recommended: separate disk):
+
+```bash
+# Mount a dedicated disk to /data (adjust device as needed)
+sudo mkdir -p /data
+sudo mount /dev/sdb1 /data
+
+# Add to /etc/fstab for persistence
+echo '/dev/sdb1 /data ext4 defaults 0 2' | sudo tee -a /etc/fstab
+```
+
+---
+
+## Deployment
+
+### Clone Repository
+
+```bash
+git clone https://github.com/fmarcelino/metal-ai.git
+cd metal-ai
+```
+
+### Deploy Services
+
+Deploy services in this order:
+
+```bash
+# 1. Deploy Portainer (container management)
+sh ./portainer/execute-update.sh
+
+# 2. Deploy Ollama (inference engine)
+sh ./ollama/execute-update.sh
+
+# 3. Deploy OpenWebUI (frontend)
+sh ./open-webui/execute-update.sh
+```
+
+### Install Models
+
+Enter the Ollama container and pull models:
+
+```bash
+docker exec -it ollama bash
+```
+
+**Recommended models:**
+
+```bash
+# General Purpose (Stable & Fast)
+ollama pull mistral:7b
+ollama pull llama3.1:8b
+ollama pull phi:2.7b
+ollama pull deepseek-r1:8b
+
+# Personal/Business Management
+ollama pull granite3.2:8b
+
+# Coding
+ollama pull granite-code:8b
+ollama pull codegemma:7b
+ollama pull starcoder2:7b
+```
+
+**Access the web interface:**
+
+```plain
+http://<server-ip>:8080
+```
+
+---
+
+## Configuration
+
+### Ollama Settings
+
+Located in `ollama/docker-compose.yml`:
+
+| Variable                   | Value | Description                               |
+|----------------------------|-------|-------------------------------------------|
+| `OLLAMA_NUM_PARALLEL`      | 4     | Number of parallel inference requests     |
+| `OLLAMA_MAX_LOADED_MODELS` | 2     | Models kept loaded in VRAM                |
+| `OLLAMA_FLASH_ATTENTION`   | 1     | Enable Flash Attention (faster inference) |
+| `CUDA_VISIBLE_DEVICES`     | 0,1   | GPUs available for inference              |
+| `OLLAMA_KEEP_ALIVE`        | 12h   | Time before unloading idle models         |
+
+**Volume Mounts:**
+
+- `/data/ollama_data` → Model configuration and state
+- `/data/ollama_models` → Model weights storage
+
+### OpenWebUI Settings
+
+Located in `open-webui/docker-compose.yml`:
+
+| Variable                    | Value                                            | Description          |
+|-----------------------------|--------------------------------------------------|----------------------|
+| `OLLAMA_BASE_URL`           | `http://127.0.0.1:11434`                         | Ollama API endpoint  |
+| `UPLOAD_ALLOWED_EXTENSIONS` | `txt,md,pdf,csv,json,xls,xlsx,doc,docx,ppt,pptx` | Allowed file uploads |
+
+---
+
+## Custom Models
+
+Custom models are defined in the `models/` directory using Ollama Modelfiles.
+
+### dis-assistant-coder
+
+**Base:** `qwen3-coder:30b` (18GB)
+
+An agentic coding assistant optimized for tools like Goose, Aider, and similar coding agents.
+
+**Features:**
+
+- 32K context window for large codebases
+- Low temperature (0.2) for deterministic code generation
+- Tool-calling optimized system prompt
+- Action-oriented workflow (plan → execute → verify)
+
+**Create:**
+
+```bash
+cd models/dis-assistant-coder
+ollama create dis-assistant-coder -f Modelfile-dis-assistant-coder
+```
+
+### dis-assistant-granite
+
+**Base:** `ibm-granite/granite-3.3-8b-instruct`
+
+Executive assistant optimized for business management tasks.
+
+**Features:**
+
+- 32K context window
+- Thinking mode enabled
+- Portuguese (Portugal) language optimization
+- Three operational perspectives: Executive, Architect, Product Manager
+
+**Create:**
+
+```bash
+cd models/dis-assistant-granite
+ollama create dis-assistant-granite -f Modelfile-dis-assistant-granite
+```
+
+### dis-assistant-magistral
+
+**Base:** `Magistral-Small-2509` (Mistral reasoning model)
+
+Strategic assistant for brainstorming and ideation.
+
+**Features:**
+
+- 40K context window
+- Low temperature (0.3) for consistent responses
+- Frequency/presence penalties for diverse outputs
+- Multi-perspective business analysis
+
+**Create:**
+
+```bash
+cd models/dis-assistant-magistral
+ollama create dis-assistant-magistral -f Modelfile-dis-assistant-magistral
+```
+
+### Creating Custom Models
+
+1. Create a directory under `models/`
+2. Create a `Modelfile-<name>` with your configuration
+3. Create a `create-model.sh` script:
+
+```bash
+#!/bin/bash
+ollama create <model-name> -f Modelfile-<model-name>
+```
+
+1. Run inside the Ollama container:
+
+```bash
+docker exec -it ollama bash
+cd /path/to/modelfile
+./create-model.sh
+```
+
+---
+
+## Model Management
+
+### Installing Models
+
+```bash
+# Enter container
+docker exec -it ollama bash
+
+# Pull official models
+ollama pull <model-name>
+
+# List installed models
+ollama list
+
+# Show model details
+ollama show <model-name>
+
+# Remove a model
+ollama rm <model-name>
+```
+
+### Updating Models
+
+Update all installed models to their latest versions:
+
+```bash
+# From host (using the helper script)
+./ollama-update-models.sh
+
+# Or manually inside container
+docker exec -it ollama bash
+ollama list | awk 'NR>1 {print $1}' | xargs -I {} ollama pull {}
+```
+
+### Unloading Models from Memory
+
+Free GPU memory by unloading specific models:
+
+```bash
+# Replace <model-name> with the actual model name
+curl http://localhost:11434/api/generate -d '{"model": "<model-name>", "keep_alive": 0}'
+
+# Examples:
+curl http://localhost:11434/api/generate -d '{"model": "mistral:7b", "keep_alive": 0}'
+curl http://localhost:11434/api/generate -d '{"model": "llama3.1:8b", "keep_alive": 0}'
+```
+
+### Pulling from Hugging Face
+
+Ollama can pull GGUF models directly from Hugging Face:
+
+```bash
+# Syntax: ollama pull hf.co/<organization>/<model>
 ollama pull hf.co/microsoft/phi-4
-ollama pull hf.co/microsoft/Phi-4-reasoning
+ollama pull hf.co/ibm-granite/granite-3.3-8b-instruct-GGUF
+ollama pull hf.co/unsloth/Llama-3.3-70B-Instruct-GGUF
 ```
 
-## Future Enhancements
+**Reference:** [Hugging Face Ollama Integration](https://huggingface.co/docs/hub/en/ollama)
 
-Planned enhancements include:
+---
 
-- Integration with more AI models and functionalities.
-- Performance optimization across all services.
-- Expanding the web interface with additional interactive features.
-- Implementing DevSecOps practices to secure and automate deployment pipelines.
+## Services Reference
+
+| Service           | Port  | URL                     | Purpose                     |
+|-------------------|-------|-------------------------|-----------------------------|
+| OpenWebUI         | 8080  | `http://<server>:8080`  | Web interface for chat      |
+| Ollama API        | 11434 | `http://<server>:11434` | REST API for inference      |
+| Portainer         | 9000  | `http://<server>:9000`  | Container management        |
+| Portainer (HTTPS) | 9443  | `https://<server>:9443` | Secure container management |
+
+**Service Management:**
+
+```bash
+# Update/restart a service
+cd <service-directory>
+sh ./execute-update.sh
+
+# View logs
+docker logs -f ollama
+docker logs -f open-webui
+
+# Check status
+docker ps
+```
+
+---
+
+## OpenCode CLI
+
+[OpenCode](https://opencode.ai) is an agentic coding CLI that can connect to your local Ollama server for AI-assisted development.
+
+### Installation
+
+```bash
+# Install via npm (requires Node.js 18+)
+npm install -g opencode
+
+# Or install via Homebrew (macOS/Linux)
+brew install opencode
+
+# Verify installation
+opencode --version
+```
+
+### Configuration
+
+Copy the default configuration file to set up OpenCode with your Metal-AI server:
+
+```bash
+# Copy the default configuration
+cp opencode.json.default opencode.json
+
+# Edit to customize (optional)
+nano opencode.json
+```
+
+The configuration file (`opencode.json`) defines:
+
+- **Provider settings**: Connection to your Ollama server
+- **Model definitions**: Available models with their capabilities
+- **Agent configurations**: Specialized agents for different tasks
+
+### Agents
+
+Three pre-configured agents are available:
+
+| Agent        | Model                   | Purpose                                                            | Tools     |
+|--------------|-------------------------|--------------------------------------------------------------------|-----------|
+| `magistral`  | dis-assistant-magistral | Executive assistant for reasoning, analysis, emails, documentation | All tools |
+| `coder`      | dis-assistant-coder     | Agentic coding for development tasks                               | All tools |
+| `granite`    | dis-assistant-granite   | Quick document review and analysis                                 | Read-only |
+
+#### magistral (Default Agent)
+
+Primary agent for business and strategic tasks:
+
+- Email drafting and communication
+- Meeting agendas and documentation
+- Technical proposals and summaries
+- Strategic analysis with multiple perspectives (Executive, Architect, Product Manager)
+
+**Configuration:** `.opencode/agent/magistral.md`
+
+#### coder
+
+Development-focused agent for coding tasks:
+
+- Code generation and refactoring
+- Debugging and code review
+- Technical documentation
+- Git operations and project setup
+
+#### granite
+
+Read-only agent for document analysis:
+
+- Document summarization
+- Code review (read-only)
+- Quick Q&A about codebase
+- Report analysis
+
+### Agent Prompts
+
+Custom agent prompts are stored in `.opencode/agent/`:
+
+```plain
+.opencode/
+└── agent/
+    └── magistral.md    # Executive assistant prompt with templates
+```
+
+To create a new agent prompt:
+
+1. Create a markdown file in `.opencode/agent/`
+2. Add YAML frontmatter with agent metadata
+3. Define the system prompt and templates
+4. Reference it in `opencode.json`
+
+Example frontmatter:
+
+```yaml
+---
+description: Your agent description
+mode: primary  # or subagent
+model: ollama/your-model
+temperature: 0.3
+tools:
+  read: true
+  glob: true
+  grep: true
+  bash: true
+  write: true
+  edit: true
+---
+```
+
+### Usage
+
+```bash
+# Start OpenCode in current directory
+opencode
+
+# Use a specific agent
+opencode --agent coder
+
+# Run a single command
+opencode "explain this codebase"
+```
+
+### Server Configuration
+
+The default configuration connects to:
+
+```plain
+http://metalai.onemarc.io:11434/v1
+```
+
+To use a different server, edit `opencode.json`:
+
+```json
+{
+  "provider": {
+    "ollama": {
+      "options": {
+        "baseURL": "http://your-server:11434/v1"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Cheat Sheet
+
+Quick copy-paste commands for common operations.
+
+### Update All Containers
+
+```bash
+# Update all services (run from repo root)
+cd ollama && sh execute-update.sh && cd ..
+cd open-webui && sh execute-update.sh && cd ..
+cd portainer && sh execute-update.sh && cd ..
+```
+
+### Setup OpenCode Configuration
+
+```bash
+# Copy default config and agent prompts to local configuration
+cp opencode.json.default ~/.config/opencode/opencode.json && \
+mkdir -p ~/.config/opencode/agent && \
+cp .opencode/agent/magistral.md ~/.config/opencode/agent
+```
+
+### Update All Models
+
+```bash
+# Update all installed Ollama models to latest versions
+./ollama-update-models.sh
+```
+
+### Rebuild Custom Models
+
+```bash
+# Rebuild all custom models after changes
+docker exec -it ollama ollama create dis-assistant-magistral -f /models/dis-assistant-magistral/Modelfile-dis-assistant-magistral
+docker exec -it ollama ollama create dis-assistant-granite -f /models/dis-assistant-granite/Modelfile-dis-assistant-granite
+docker exec -it ollama ollama create dis-assistant-coder -f /models/dis-assistant-coder/Modelfile-dis-assistant-coder
+```
+
+### Unload All Models from GPU
+
+```bash
+# Free GPU memory by unloading all loaded models
+curl -s http://localhost:11434/api/tags | jq -r '.models[].name' | xargs -I {} curl -s http://localhost:11434/api/generate -d '{"model": "{}", "keep_alive": 0}'
+```
+
+### View Service Logs
+
+```bash
+# Ollama logs
+docker logs -f ollama
+
+# OpenWebUI logs
+docker logs -f open-webui
+
+# All container status
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+
+### GPU Monitoring
+
+```bash
+# Real-time GPU monitoring
+watch -n1 nvidia-smi
+
+# GPU memory usage only
+nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv
+```
+
+### Enter Ollama Container
+
+```bash
+# Interactive shell in Ollama container
+docker exec -it ollama bash
+
+# Run single command in container
+docker exec ollama ollama list
+```
+
+### Restart Services
+
+```bash
+# Restart single service
+docker restart ollama
+docker restart open-webui
+
+# Restart all Metal-AI services
+docker restart ollama open-webui portainer
+```
+
+### Check Service Health
+
+```bash
+# Verify Ollama API is responding
+curl -s http://localhost:11434/api/tags | jq '.models[].name'
+
+# Check OpenWebUI connectivity to Ollama
+docker exec open-webui curl -s http://127.0.0.1:11434/api/tags | jq '.models | length'
+```
+
+### Disk Usage
+
+```bash
+# Check model storage usage
+du -sh /data/ollama_*
+
+# List models with sizes
+docker exec ollama ollama list
+```
+
+---
+
+## Troubleshooting
+
+### GPU Not Detected
+
+```bash
+# Check NVIDIA driver
+nvidia-smi
+
+# Check Docker GPU access
+docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+
+# Verify container runtime
+docker info | grep -i runtime
+```
+
+### NVML Initialization Error
+
+```bash
+# Edit container runtime config
+sudo nano /etc/nvidia-container-runtime/config.toml
+# Set: no-cgroups = false
+
+# Restart Docker
+sudo systemctl restart docker
+```
+
+### Model Loading Issues
+
+```bash
+# Check Ollama logs
+docker logs ollama
+
+# Check available VRAM
+nvidia-smi
+
+# Unload models to free memory
+curl http://localhost:11434/api/generate -d '{"model": "model-name", "keep_alive": 0}'
+```
+
+### OpenWebUI Connection Issues
+
+```bash
+# Verify Ollama is running
+curl http://localhost:11434/api/tags
+
+# Check OpenWebUI logs
+docker logs open-webui
+
+# Ensure network connectivity
+docker exec open-webui curl http://127.0.0.1:11434/api/tags
+```
+
+---
+
+## Additional Resources
+
+- [Ollama Documentation](https://ollama.ai/)
+- [OpenWebUI Documentation](https://docs.openwebui.com/getting-started/quick-start)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html)
+- [Hugging Face Model Hub](https://huggingface.co/models)

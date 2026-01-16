@@ -1,4 +1,61 @@
-FROM hf.co/Triangle104/Mistral-Small-24B-Instruct-2501-Q8_0-GGUF
+FROM hf.co/unsloth/Magistral-Small-2509-GGUF:UD-Q5_K_XL
+
+# ==============================================================================
+# PARÂMETROS OPTIMIZADOS PARA 2x RTX 3090 (48GB VRAM)
+# ==============================================================================
+
+# PARAMETER temperature 0.7
+# PARAMETER top_p 0.8
+# PARAMETER top_k 40
+# PARAMETER num_ctx 16384
+# PARAMETER num_predict 1024
+# PARAMETER num_batch 512
+# PARAMETER think true
+
+# Contexto alargado para documentos e conversas longas
+PARAMETER num_ctx 40960
+
+# Optimização para multi-GPU
+PARAMETER num_gpu 99
+
+# Batch processing optimizado para RTX 3090
+PARAMETER num_batch 512
+PARAMETER num_thread 8
+
+# Previsão alargada para respostas completas
+PARAMETER num_predict 4096
+
+# Memória de repetição aumentada para contexto executivo
+PARAMETER repeat_last_n 256
+
+# Temperatura baixa para consistência (recomendação Mistral)
+PARAMETER temperature 0.3
+
+# Sampling optimizado para respostas consistentes
+PARAMETER top_p 0.85
+PARAMETER top_k 50
+
+# Penalização de repetição ajustada
+PARAMETER repeat_penalty 1.1
+
+# Ativar modo de pensamento estruturado
+# PARAMETER think true
+
+# Penalização de frequência para evitar loops
+PARAMETER frequency_penalty 0.1
+
+# Penalização de presença para maior diversidade vocabular
+PARAMETER presence_penalty 0.05
+
+# Stop tokens para controlar saídas
+PARAMETER stop "</s>"
+PARAMETER stop "[/INST]"
+PARAMETER stop "<|im_end|>"
+
+# ==============================================================================
+# SYSTEM PROMPT OPTIMIZADO
+# ==============================================================================
+
 SYSTEM """
 ## 1. Persona e Papel
 
@@ -28,7 +85,7 @@ O seu estilo de gestão é organizado, metodológico (ALM, DevSecOps), focado na
 * **BA:** Ana Catoloti (Líder)
 * **QA:** Kamila Santos (Líder)
 * **Projetos:** Helder Castro (Líder), com apoio de José Martins (Angola) e Vasco Guerra (Moçambique)
-* **Produto (minha equipa direta):** Diogo Francisco, Leonardo Elias, Pedro Gonçalves, André Freitas e Eurico Vissanço
+* **Produto (minha equipa direta):** Diogo Francisco, Leonardo Elias, David Paiva, Pedro Gonçalves, André Freitas e Eurico Vissanço
 * **Outros Líderes:** Aires Reis (Automação), Bruno Duarte (Dados) e José Muquê (Sistemas)
 
 ## 5. Regras de Formato e Estrutura
@@ -45,10 +102,3 @@ O seu estilo de gestão é organizado, metodológico (ALM, DevSecOps), focado na
 * **Opções Comparativas:** Quando houver mais do que um caminho, apresenta as opções de forma clara (ex: "Opção A foca em rapidez; Opção B foca em resiliência")
 * **Modelo de Comando:** Se o comando começar por `# COMANDO PARA ASSISTENTE EXECUTIVO (DiS) #`, segue rigorosamente a estrutura fornecida para o resultado esperado
 """
-PARAMETER temperature 0.7
-PARAMETER top_p 0.8
-PARAMETER top_k 40
-PARAMETER num_ctx 16384
-PARAMETER num_predict 1024
-PARAMETER num_batch 512
-PARAMETER think true

@@ -6,18 +6,31 @@ volumes:
       type: none
       o: bind
       device: /data/ollama_data
+  ollama_models:
+    name: ollama_models
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/ollama_models
 
 services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
+    restart: always
     runtime: nvidia
     ports:
       - 11434:11434
     environment:
-      - CUDA_VISIBLE_DEVICES=0,11
+      - OLLAMA_NUM_PARALLEL=4       # Process 4 requests in parallel
+      - OLLAMA_MAX_LOADED_MODELS=2  # Keep 2 models loaded in memory
+      - OLLAMA_FLASH_ATTENTION=1    # Enable Flash Attention (faster)
+      - CUDA_VISIBLE_DEVICES=0,1    # Use both GPUs
+      - OLLAMA_KEEP_ALIVE=12h       # Increase keep-alive timeout
     volumes:
       - ollama_data:/root/.ollama
+      - ollama_models:/opt/models
     deploy:
       resources:
         reservations:

@@ -1,6 +1,8 @@
 volumes:
   open-webui:
     name: open-webui
+  nltk-data:
+    name: nltk-data
 
 services:
   open-webui:
@@ -9,6 +11,9 @@ services:
     restart: always
     network_mode: host
     environment:
-      - OLLAMA_BASE_URL=http://127.0.0.1:11434
+      OLLAMA_BASE_URL: "http://127.0.0.1:11434"
+      UPLOAD_ALLOWED_EXTENSIONS: "txt,md,pdf,csv,json,xls,xlsx,doc,docx,ppt,pptx"
+      NLTK_DATA: "/usr/local/share/nltk_data"
     volumes:
       - open-webui:/app/backend/data
+      - nltk-data:/usr/local/share/nltk_data

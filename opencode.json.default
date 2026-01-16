@@ -1,0 +1,82 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (metalai.onemarc.io)",
+      "options": {
+        "baseURL": "http://metalai.onemarc.io:11434/v1"
+      },
+      "models": {
+        "dis-assistant-magistral": {
+          "name": "DiS Magistral (40K) - Reasoning & Analysis",
+          "tools": true,
+          "reasoning": true,
+          "options": {
+            "num_ctx": 40960
+          }
+        },
+        "dis-assistant-granite": {
+          "name": "DiS Granite (32K) - Executive Assistant",
+          "tools": false,
+          "reasoning": true,
+          "options": {
+            "num_ctx": 32768
+          }
+        },
+        "dis-assistant-coder": {
+          "name": "DiS Coder (32K) - Agentic Coding",
+          "tools": true,
+          "reasoning": true,
+          "options": {
+            "num_ctx": 32768
+          }
+        }
+      }
+    }
+  },
+  "default_agent": "magistral",
+  "agent": {
+    "magistral": {
+      "description": "Executive assistant for reasoning, analysis, writing emails, and documentation",
+      "mode": "primary",
+      "model": "ollama/dis-assistant-magistral",
+      "prompt": "{file:./agent/magistral.md}",
+      "tools": {
+        "read": true,
+        "glob": true,
+        "grep": true,
+        "bash": true,
+        "write": true,
+        "edit": true
+      }
+    },
+    "coder": {
+      "description": "Agentic coding assistant for development tasks",
+      "mode": "subagent",
+      "model": "ollama/dis-assistant-coder",
+      "tools": {
+        "read": true,
+        "glob": true,
+        "grep": true,
+        "bash": true,
+        "write": true,
+        "edit": true
+      }
+    },
+    "granite": {
+      "description": "Quick assistant for document review and analysis",
+      "mode": "subagent",
+      "model": "ollama/dis-assistant-granite",
+      "tools": {
+        "read": true,
+        "glob": true,
+        "grep": true,
+        "bash": false,
+        "write": false,
+        "edit": false
+      }
+    }
+  },
+  "autoupdate": true
+}
