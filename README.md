@@ -90,7 +90,9 @@ To run this server locally or deploy it on your preferred cloud service, follow 
 
 ```bash
 docker exec -it ollama /bin/bash
-ollama list | awk -F: 'NR>1 && !/reviewer/ {system("ollama pull "$1)}'
+```
+
+```bash
 ollama list | awk 'NR>1 {print $1}' | xargs -I {} sh -c 'echo "Updating model: {}"; ollama pull {}; echo "---"' && echo "All models updated."
 ```
 

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (Local)",
+      "options": {
+        "baseURL": "http://metalai.onemarc.io:11434/v1"
+      },
+      "models": {
+        "devstral-agent": {
+          "name": "Devstral Agent (64K)",
+          "tools": true,
+          "reasoning": true,
+          "options": {
+            "num_ctx": 65536
+          }
+        },
+        "devstral-small-2": {
+          "name": "Devstral Small 2 (Default)",
+          "tools": true,
+          "reasoning": false
+        }
+      }
+    }
+  }
+}
