@@ -1,1 +1,0 @@
-ollama create assistente-hermes7b -f Modelfile-hermes7b

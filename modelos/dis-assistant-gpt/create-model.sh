@@ -1,1 +1,0 @@
-ollama create dis-assistant-gpt-oss -f Modelfile-dis-assistant
