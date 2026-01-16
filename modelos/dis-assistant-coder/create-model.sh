@@ -1,1 +1,1 @@
-ollama create dis-assistant-granite -f Modelfile-dis-assistant-coder
+ollama create dis-assistant-coder -f Modelfile-dis-assistant-coder

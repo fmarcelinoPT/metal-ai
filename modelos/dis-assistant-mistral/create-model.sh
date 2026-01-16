@@ -1,1 +1,0 @@
-ollama create dis-assistant-mistral -f Modelfile-dis-assistant-mistral

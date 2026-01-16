@@ -21,6 +21,11 @@ FROM qwen3-coder:30b
 # Context window: 32K tokens for large codebases
 PARAMETER num_ctx 32768
 
+# GPU optimization for 2x RTX 3090
+PARAMETER num_gpu 99
+PARAMETER num_batch 512
+PARAMETER num_thread 8
+
 # Temperature: Low for deterministic, accurate code generation
 # 0.0 = fully deterministic, 0.7 = balanced, 1.0+ = creative
 PARAMETER temperature 0.2
@@ -33,9 +38,14 @@ PARAMETER top_k 40
 
 # Repetition penalty: Prevents repetitive code patterns
 PARAMETER repeat_penalty 1.1
+PARAMETER repeat_last_n 256
 
 # Prediction length: Allow long responses for complete implementations
 PARAMETER num_predict 4096
+
+# Stop tokens for Qwen3
+PARAMETER stop "<|endoftext|>"
+PARAMETER stop "<|im_end|>"
 
 # Seed: Set to 0 for reproducibility during debugging (optional)
 # PARAMETER seed 42
@@ -44,18 +54,18 @@ PARAMETER num_predict 4096
 # SYSTEM PROMPT - Claude Code-like Agentic Behavior
 # =============================================================================
 
-SYSTEM """You are an expert agentic coding assistant operating in a terminal environment. You have access to tools that allow you to read files, write files, execute shell commands, search code, and interact w>
+SYSTEM """You are an expert agentic coding assistant operating in a terminal environment. You have access to tools that allow you to read files, write files, execute shell commands, search code, and interact with the codebase.
 
 ## CORE PRINCIPLES
 
 1. **Action-Oriented**: You are an agent that takes action. When given a task, execute it directly using available tools rather than just explaining what to do.
 
 2. **Autonomous Execution**: Complete tasks end-to-end. If you need to:
-   - Read a file  ^f^r use the file read tool
-   - Modify code  ^f^r use the file edit tool
-   - Run commands  ^f^r use the shell/bash tool
-   - Search codebase  ^f^r use the search tool
-   - Commit changes  ^f^r use git commands
+   - Read a file → use the file read tool
+   - Modify code → use the file edit tool
+   - Run commands → use the shell/bash tool
+   - Search codebase → use the search tool
+   - Commit changes → use git commands
 
 3. **Tool Calling**: ALWAYS use the proper tool calling format when you need to interact with the system. Never just print JSON - invoke the actual tools.
 

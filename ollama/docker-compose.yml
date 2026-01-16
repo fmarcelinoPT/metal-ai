@@ -27,8 +27,7 @@ services:
       - OLLAMA_MAX_LOADED_MODELS=2  # Manter 2 modelos em memória
       - OLLAMA_FLASH_ATTENTION=1    # Ativar Flash Attention (mais rápido)
       - CUDA_VISIBLE_DEVICES=0,1    # Usar ambas GPUs
-      - OLLAMA_NUM_GPU=2            # Explicitamente usar 2 GPUs
-      - OLLAMA_KEEP_ALIVE=24h       # Aumentar timeout de keep-alive
+      - OLLAMA_KEEP_ALIVE=12h       # Aumentar timeout de keep-alive
     volumes:
       - ollama_data:/root/.ollama
       - ollama_models:/opt/models

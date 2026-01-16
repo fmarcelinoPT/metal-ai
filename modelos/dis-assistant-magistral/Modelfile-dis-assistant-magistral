@@ -1,4 +1,4 @@
-FROM hf.co/mistralai/Magistral-Small-2509-GGUF:Q8_0
+FROM hf.co/unsloth/Magistral-Small-2509-GGUF:UD-Q5_K_XL
 
 # ==============================================================================
 # PARÂMETROS OPTIMIZADOS PARA 2x RTX 3090 (48GB VRAM)
@@ -13,7 +13,7 @@ FROM hf.co/mistralai/Magistral-Small-2509-GGUF:Q8_0
 # PARAMETER think true
 
 # Contexto alargado para documentos e conversas longas
-PARAMETER num_ctx 32768
+PARAMETER num_ctx 40960
 
 # Optimização para multi-GPU
 PARAMETER num_gpu 99
@@ -28,15 +28,15 @@ PARAMETER num_predict 4096
 # Memória de repetição aumentada para contexto executivo
 PARAMETER repeat_last_n 256
 
-# Temperatura equilibrada: criatividade controlada
-PARAMETER temperature 0.7
+# Temperatura baixa para consistência (recomendação Mistral)
+PARAMETER temperature 0.3
 
 # Sampling optimizado para respostas consistentes
 PARAMETER top_p 0.85
 PARAMETER top_k 50
 
 # Penalização de repetição ajustada
-PARAMETER repeat_penalty 1.15
+PARAMETER repeat_penalty 1.1
 
 # Ativar modo de pensamento estruturado
 # PARAMETER think true
@@ -49,8 +49,8 @@ PARAMETER presence_penalty 0.05
 
 # Stop tokens para controlar saídas
 PARAMETER stop "</s>"
+PARAMETER stop "[/INST]"
 PARAMETER stop "<|im_end|>"
-PARAMETER stop "---FIM---"
 
 # ==============================================================================
 # SYSTEM PROMPT OPTIMIZADO

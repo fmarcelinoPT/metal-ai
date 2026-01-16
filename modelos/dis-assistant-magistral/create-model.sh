@@ -1,0 +1,1 @@
+ollama create dis-assistant-magistral -f Modelfile-dis-assistant-magistral
