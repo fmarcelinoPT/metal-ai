@@ -66,19 +66,19 @@ Metal-AI provides a self-hosted platform for deploying and managing multiple Lar
 │                    Ollama (Port 11434)                      │
 │              GPU-Accelerated Inference Engine               │
 │                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Configuration:                                      │   │
-│  │  • 4 parallel requests (OLLAMA_NUM_PARALLEL)        │   │
-│  │  • 2 models loaded in VRAM (OLLAMA_MAX_LOADED)      │   │
-│  │  • Flash Attention enabled                          │   │
-│  │  • 12h keep-alive timeout                           │   │
-│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Configuration:                                     │    │
+│  │  • 4 parallel requests (OLLAMA_NUM_PARALLEL)        │    │
+│  │  • 2 models loaded in VRAM (OLLAMA_MAX_LOADED)      │    │
+│  │  • Flash Attention enabled                          │    │
+│  │  • 12h keep-alive timeout                           │    │
+│  └─────────────────────────────────────────────────────┘    │
 │                                                             │
-│  ┌───────────────┐              ┌───────────────┐          │
-│  │   RTX 3090    │              │   RTX 3090    │          │
-│  │    (24GB)     │              │    (24GB)     │          │
-│  │   GPU 0       │              │   GPU 1       │          │
-│  └───────────────┘              └───────────────┘          │
+│  ┌───────────────┐              ┌───────────────┐           │
+│  │   RTX 3090    │              │   RTX 3090    │           │
+│  │    (24GB)     │              │    (24GB)     │           │
+│  │   GPU 0       │              │   GPU 1       │           │
+│  └───────────────┘              └───────────────┘           │
 └──────────────────────────┬──────────────────────────────────┘
                            │
               ┌────────────┴────────────┐
