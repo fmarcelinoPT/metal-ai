@@ -23,6 +23,7 @@ A Docker-based AI server infrastructure built with Ollama and OpenWebUI, leverag
   - [Ollama Settings](#ollama-settings)
   - [OpenWebUI Settings](#openwebui-settings)
 - [Custom Models](#custom-models)
+  - [dis-assistant-cos](#dis-assistant-cos)
   - [dis-assistant-coder](#dis-assistant-coder)
   - [dis-assistant-granite](#dis-assistant-granite)
   - [dis-assistant-magistral](#dis-assistant-magistral)
@@ -323,6 +324,27 @@ Located in `open-webui/docker-compose.yml`:
 
 Custom models are defined in the `models/` directory using Ollama Modelfiles.
 
+### dis-assistant-cos
+
+**Base:** `qwen3:8b` (~5GB)
+
+Lightweight orchestrator agent (Chief of Staff) optimized for routing, file operations, and task delegation.
+
+**Features:**
+
+- 40K context window
+- Excellent tool calling support
+- Routes complex tasks to specialized subagents
+- File manipulation (read/write/edit)
+- Portuguese (Portugal) language optimization
+
+**Create:**
+
+```bash
+cd models/dis-assistant-cos
+ollama create dis-assistant-cos -f Modelfile-dis-assistant-cos
+```
+
 ### dis-assistant-coder
 
 **Base:** `qwen3-coder:30b` (18GB)
@@ -529,26 +551,68 @@ The configuration file (`opencode.json`) defines:
 
 ### Agents
 
-Three pre-configured agents are available:
+Four pre-configured agents are available with a hierarchical architecture:
 
-| Agent        | Model                   | Purpose                                                            | Tools     |
-|--------------|-------------------------|--------------------------------------------------------------------|-----------|
-| `magistral`  | dis-assistant-magistral | Executive assistant for reasoning, analysis, emails, documentation | All tools |
-| `coder`      | dis-assistant-coder     | Agentic coding for development tasks                               | All tools |
-| `granite`    | dis-assistant-granite   | Quick document review and analysis                                 | Read-only |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   PRIMARY AGENT: cos                        │
+│                                                             │
+│  Model: dis-assistant-cos (Qwen3:8b, ~5GB)                 │
+│  Role: Lightweight orchestrator with tool calling          │
+│  Tools: read, write, edit, glob, grep, bash                │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ delegates via @mention
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│   @magistral  │ │    @coder     │ │   @granite    │
+│   (Subagent)  │ │   (Subagent)  │ │  (Subagent)   │
+│               │ │               │ │               │
+│ Deep reasoning│ │ Code tasks    │ │ Long context  │
+│ No tools      │ │ Full tools    │ │ Read-only     │
+└───────────────┘ └───────────────┘ └───────────────┘
+```
 
-#### magistral (Default Agent)
+| Agent        | Model                   | Mode     | Purpose                                    | Tools     |
+|--------------|-------------------------|----------|--------------------------------------------|-----------|
+| `cos`        | dis-assistant-cos       | Primary  | Orchestrator, routing, file operations     | All tools |
+| `magistral`  | dis-assistant-magistral | Subagent | Deep reasoning, analysis, brainstorming    | None      |
+| `coder`      | dis-assistant-coder     | Subagent | Agentic coding for development tasks       | All tools |
+| `granite`    | dis-assistant-granite   | Subagent | Document review, long context analysis     | Read-only |
 
-Primary agent for business and strategic tasks:
+#### cos (Default Agent)
 
+Primary orchestrator agent (Chief of Staff):
+
+- Routes tasks to specialized subagents via `@mention`
+- File manipulation (read, write, edit)
+- Lightweight (~5GB VRAM) for always-on operation
+- Portuguese (Portugal) language optimization
+
+**Delegation examples:**
+
+```
+@magistral analisa esta proposta e dá-me feedback estratégico
+@coder implementa uma função de autenticação JWT
+@granite resume este documento de 50 páginas
+```
+
+**Configuration:** `.opencode/agent/cos.md`
+
+#### magistral (Subagent)
+
+Strategic analysis agent for deep reasoning:
+
+- Complex analysis and brainstorming
 - Email drafting and communication
-- Meeting agendas and documentation
 - Technical proposals and summaries
-- Strategic analysis with multiple perspectives (Executive, Architect, Product Manager)
+- Multi-perspective analysis (Executive, Architect, Product Manager)
+
+**Note:** No tool access - focuses purely on reasoning quality.
 
 **Configuration:** `.opencode/agent/magistral.md`
 
-#### coder
+#### coder (Subagent)
 
 Development-focused agent for coding tasks:
 
@@ -557,14 +621,14 @@ Development-focused agent for coding tasks:
 - Technical documentation
 - Git operations and project setup
 
-#### granite
+#### granite (Subagent)
 
 Read-only agent for document analysis:
 
 - Document summarization
 - Code review (read-only)
 - Quick Q&A about codebase
-- Report analysis
+- Long context analysis (32K tokens)
 
 ### Agent Prompts
 
@@ -573,7 +637,8 @@ Custom agent prompts are stored in `.opencode/agent/`:
 ```plain
 .opencode/
 └── agent/
-    └── magistral.md    # Executive assistant prompt with templates
+    ├── cos.md          # Primary orchestrator (Chief of Staff)
+    └── magistral.md    # Strategic analysis subagent
 ```
 
 To create a new agent prompt:
@@ -657,7 +722,7 @@ cd portainer && sh execute-update.sh && cd ..
 # Copy default config and agent prompts to local configuration
 cp opencode.json.default ~/.config/opencode/opencode.json && \
 mkdir -p ~/.config/opencode/agent && \
-cp .opencode/agent/magistral.md ~/.config/opencode/agent
+cp .opencode/agent/*.md ~/.config/opencode/agent/
 ```
 
 ### Update All Models
@@ -670,10 +735,17 @@ cp .opencode/agent/magistral.md ~/.config/opencode/agent
 ### Rebuild Custom Models
 
 ```bash
+# Remove old models
+docker exec -it ollama ollama rm dis-assistant-cos
+docker exec -it ollama ollama rm dis-assistant-magistral
+docker exec -it ollama ollama rm dis-assistant-granite
+docker exec -it ollama ollama rm dis-assistant-coder
+
 # Rebuild all custom models after changes
-docker exec -it ollama ollama create dis-assistant-magistral -f /models/dis-assistant-magistral/Modelfile-dis-assistant-magistral
-docker exec -it ollama ollama create dis-assistant-granite -f /models/dis-assistant-granite/Modelfile-dis-assistant-granite
-docker exec -it ollama ollama create dis-assistant-coder -f /models/dis-assistant-coder/Modelfile-dis-assistant-coder
+docker exec -it ollama ollama create dis-assistant-cos -f ./dis-assistant-cos/Modelfile-dis-assistant-cos
+docker exec -it ollama ollama create dis-assistant-magistral -f ./dis-assistant-magistral/Modelfile-dis-assistant-magistral
+docker exec -it ollama ollama create dis-assistant-granite -f ./dis-assistant-granite/Modelfile-dis-assistant-granite
+docker exec -it ollama ollama create dis-assistant-coder -f ./dis-assistant-coder/Modelfile-dis-assistant-coder
 ```
 
 ### Unload All Models from GPU

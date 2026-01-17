@@ -8,9 +8,17 @@
         "baseURL": "http://metalai.onemarc.io:11434/v1"
       },
       "models": {
+        "dis-assistant-cos": {
+          "name": "DiS CoS (40K) - Primary Orchestrator",
+          "tools": true,
+          "reasoning": true,
+          "options": {
+            "num_ctx": 40960
+          }
+        },
         "dis-assistant-magistral": {
           "name": "DiS Magistral (40K) - Reasoning & Analysis",
-          "tools": true,
+          "tools": false,
           "reasoning": true,
           "options": {
             "num_ctx": 40960
@@ -35,13 +43,13 @@
       }
     }
   },
-  "default_agent": "magistral",
+  "default_agent": "cos",
   "agent": {
-    "magistral": {
-      "description": "Executive assistant for reasoning, analysis, writing emails, and documentation",
+    "cos": {
+      "description": "Primary orchestrator agent with tool calling capabilities for file manipulation and task delegation",
       "mode": "primary",
-      "model": "ollama/dis-assistant-magistral",
-      "prompt": "{file:./agent/magistral.md}",
+      "model": "ollama/dis-assistant-cos",
+      "prompt": "{file:./agent/cos.md}",
       "tools": {
         "read": true,
         "glob": true,
@@ -49,6 +57,20 @@
         "bash": true,
         "write": true,
         "edit": true
+      }
+    },
+    "magistral": {
+      "description": "Strategic analysis subagent for deep reasoning, brainstorming, and complex analysis tasks",
+      "mode": "subagent",
+      "model": "ollama/dis-assistant-magistral",
+      "prompt": "{file:./agent/magistral.md}",
+      "tools": {
+        "read": false,
+        "glob": false,
+        "grep": false,
+        "bash": false,
+        "write": false,
+        "edit": false
       }
     },
     "coder": {
