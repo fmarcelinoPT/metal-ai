@@ -8,28 +8,20 @@
         "baseURL": "http://metalai.onemarc.io:11434/v1"
       },
       "models": {
-        "dis-assistant-cos": {
-          "name": "DiS CoS (40K) - Primary Orchestrator",
+        "dis-assistant-exec": {
+          "name": "DiS Exec (40K) - Primary Orchestrator",
           "tools": true,
           "reasoning": true,
           "options": {
             "num_ctx": 40960
           }
         },
-        "dis-assistant-magistral": {
-          "name": "DiS Magistral (40K) - Reasoning & Analysis",
+        "dis-assistant-analyst": {
+          "name": "DiS Analyst (40K) - Strategic Analysis",
           "tools": false,
           "reasoning": true,
           "options": {
             "num_ctx": 40960
-          }
-        },
-        "dis-assistant-granite": {
-          "name": "DiS Granite (32K) - Executive Assistant",
-          "tools": false,
-          "reasoning": true,
-          "options": {
-            "num_ctx": 32768
           }
         },
         "dis-assistant-coder": {
@@ -43,13 +35,13 @@
       }
     }
   },
-  "default_agent": "cos",
+  "default_agent": "exec",
   "agent": {
-    "cos": {
+    "exec": {
       "description": "Primary orchestrator agent with tool calling capabilities for file manipulation and task delegation",
       "mode": "primary",
-      "model": "ollama/dis-assistant-cos",
-      "prompt": "{file:./agent/cos.md}",
+      "model": "ollama/dis-assistant-exec",
+      "prompt": "{file:./agent/exec.md}",
       "tools": {
         "read": true,
         "glob": true,
@@ -59,11 +51,11 @@
         "edit": true
       }
     },
-    "magistral": {
+    "analyst": {
       "description": "Strategic analysis subagent for deep reasoning, brainstorming, and complex analysis tasks",
       "mode": "subagent",
-      "model": "ollama/dis-assistant-magistral",
-      "prompt": "{file:./agent/magistral.md}",
+      "model": "ollama/dis-assistant-analyst",
+      "prompt": "{file:./agent/analyst.md}",
       "tools": {
         "read": false,
         "glob": false,
@@ -84,19 +76,6 @@
         "bash": true,
         "write": true,
         "edit": true
-      }
-    },
-    "granite": {
-      "description": "Quick assistant for document review and analysis",
-      "mode": "subagent",
-      "model": "ollama/dis-assistant-granite",
-      "tools": {
-        "read": true,
-        "glob": true,
-        "grep": true,
-        "bash": false,
-        "write": false,
-        "edit": false
       }
     }
   },
